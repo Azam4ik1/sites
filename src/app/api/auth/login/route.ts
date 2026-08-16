@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { createSessionToken, setSessionCookie } from '@/lib/auth';
-import { checkRateLimit, resetRateLimit } from '@/lib/rate-limit';
+import { checkRateLimit, recordFailedAttempt, resetRateLimit } from '@/lib/rate-limit';
 import { loginSchema } from '@/lib/validations';
 
 export async function POST(req: Request) {
@@ -40,11 +40,13 @@ export async function POST(req: Request) {
     } | undefined;
 
     if (!user || user.status !== 'active') {
+      recordFailedAttempt(ip);
       return NextResponse.json({ error: 'Емейл ё парол нодуруст аст' }, { status: 401 });
     }
 
     const passwordValid = await bcrypt.compare(password, user.password);
     if (!passwordValid) {
+      recordFailedAttempt(ip);
       return NextResponse.json({ error: 'Емейл ё парол нодуруст аст' }, { status: 401 });
     }
 

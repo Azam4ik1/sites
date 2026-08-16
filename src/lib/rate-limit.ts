@@ -12,11 +12,7 @@ export function checkRateLimit(ipOrKey: string): { allowed: boolean; remaining: 
   const record = loginAttempts.get(ipOrKey);
 
   if (!record || now > record.resetAt) {
-    loginAttempts.set(ipOrKey, {
-      count: 1,
-      resetAt: now + WINDOW_MS,
-    });
-    return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetInSec: Math.ceil(WINDOW_MS / 1000) };
+    return { allowed: true, remaining: MAX_ATTEMPTS, resetInSec: Math.ceil(WINDOW_MS / 1000) };
   }
 
   if (record.count >= MAX_ATTEMPTS) {
@@ -27,12 +23,25 @@ export function checkRateLimit(ipOrKey: string): { allowed: boolean; remaining: 
     };
   }
 
-  record.count += 1;
   return {
     allowed: true,
     remaining: MAX_ATTEMPTS - record.count,
     resetInSec: Math.ceil((record.resetAt - now) / 1000),
   };
+}
+
+export function recordFailedAttempt(ipOrKey: string) {
+  const now = Date.now();
+  const record = loginAttempts.get(ipOrKey);
+
+  if (!record || now > record.resetAt) {
+    loginAttempts.set(ipOrKey, {
+      count: 1,
+      resetAt: now + 5 * 60 * 1000, // 5 min lock window
+    });
+  } else {
+    record.count += 1;
+  }
 }
 
 export function resetRateLimit(ipOrKey: string) {
